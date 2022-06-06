@@ -1,6 +1,5 @@
 #!/usr/bin/python
-import sys
-import pygame, time, math
+import pygame, time, math, sys
 
 # Define screen dimensions
 screenx = 500
@@ -38,7 +37,8 @@ class ship:
     xvel = 0
     yvel = 0
     rot = 0
-    thrust = 0.4
+    unitcircle = 0
+    thrust = 5
     fuel = 100
 
 # Define an object to define the ground
@@ -47,14 +47,14 @@ class ground:
     # Each point is an (x, y) tuple which gives the offset
     # of the point from the center of the object.
     # Also having each point in the vector makes it easier to
-    # get the rect of every point and calculate landings.
+    # get the rect of every line and calculate landings.
     points = []
 
 # Begin defining physics variables
-grav = 0.1 * (0 - 9.8) # Acceleration due to gravity, in meters/second/second
+grav = (0 - 9.8) # Acceleration due to gravity, in meters/second/second
 
 class gui:
-    fuel = font.render((f"Fuel: {(math.trunc(ship.fuel))}%"), True, green, blue)
+    fuel = font.render((f"Fuel: {(math.trunc(ship.fuel))}%"), True, white, white)
 
 # Shamelessly stolen function to rotate the ship
 def rotate(point):
@@ -78,7 +78,7 @@ def drawship():
 
 def drawgui():
     # This doesn't show up for some godforsaken reason
-    display.blit(gui.fuel, (20, 20))
+    display.blit(gui.fuel, (250, 250))
 
 # Main loop
 while True:
@@ -94,18 +94,41 @@ while True:
             if keys[pygame.K_RIGHT]:
                 ship.rot += 5
             if keys[pygame.K_UP] and ship.fuel > 0:
-                # REMEMBER: Implement needed math to change both
-                # X and Y velocity with regards to direction.
-                # math.tangent(ship.rot) is equal to the rise over the run.
-                # Now comes the question: How do we find the individual rise and run?
-                # We know that the change in X velocity plus the change in Y velocity
-                # should be equal to the thrust...
-                # DO THIS STUFF ON PAPER. FIGURE IT OUT.
-                # ----------------------------------------------------------------------
-                ship.yvel += ship.thrust
+                print(ship.rot)
+                # TO DO: Somewhere in here, something is not working.
+                # I don't think value signs are being respected.
+
+                # We adjust our rotational values to compensate for the fact that 0,
+                # in Python, is straight up but 0 in a unit circle is 3 o'clock.
+                # So: If the rotation, plus 90 degrees clockwise, is greater than 360 (wraps around),
+                # we add 90 to compensate and subtract 360 to get back in range.
+                if (ship.rot + 90) > 360:
+                    ship.unitcircle = (ship.rot + 90) - 360
+                else:
+                    ship.unitcircle = (ship.rot + 90)
+                # Now, we have a unit circle setup.
+                # What we wanna do now is get a reference angle.
+                ship.unitcircle = ship.unitcircle%180
+                if ship.unitcircle > 90 :
+                    ship.unitcircle = 180 - ship.unitcircle
+                # Now we have a reference angle!! Woo!! The most difficult part is done.
+                # ship.unitcircle is now our reference angle, so:
+                # sin(ship.unitcircle) = (Increase in vel (Y)) / Thrust
+                # cos(ship.unitcircle) = (Increase in vel (X)) / Thrust
+                # Which means if we simply multiply these results by the Thrust value,
+                # we get our vector components!!
+
+                # I think the bug is here. Somehow between +1 degrees and +180 degrees,
+                # the Y component of the vector becomes negative.
+                if 181 > ship.rot > 0:
+                    ship.yvel -= ((math.sin(ship.unitcircle))) * ship.thrust
+                else:
+                    ship.yvel += (math.sin(ship.unitcircle)) * ship.thrust
+                #ship.xvel += (math.cos(ship.unitcircle)) * ship.thrust
                 ship.fuel -= 0.2
 
     # Let the forces of nature do their things
     ship.yvel += (grav/fps)
-    ship.ypos -= ship.yvel
+    ship.ypos -= (ship.yvel/fps)
+    ship.xpos -= (ship.xvel/fps)
     clock.tick(fps)
