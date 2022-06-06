@@ -98,22 +98,23 @@ while True:
                 # I don't think value signs are being respected.
 
                 # What we wanna do first is get a reference angle.
+                # Notice: THIS FUNCTION IS BROKEN! It returns a Positive reference
+                # angle regardless of the input.
                 ship.unitcircle = ship.rot%180
                 if ship.unitcircle > 90 :
                     ship.unitcircle = 180 - ship.unitcircle
-                # Now we have a reference angle!! Woo!! The most difficult part is done.
                 # ship.unitcircle is now our reference angle, so:
                 # sin(ship.unitcircle) = (Increase in vel (Y)) / Thrust
                 # cos(ship.unitcircle) = (Increase in vel (X)) / Thrust
-                # Which means if we simply multiply these results by the Thrust value,
-                # we get our vector components!!
 
                 # I think the bug is here.
                 # The ship seemingly chooses a random direction in the X axis
                 # and refuses to go the other way.
+                # Additionally it seems to randomly decide to invert its vertical
+                # thrust and go straight down...?
+                ship.xvel += ((math.sin((ship.unitcircle-90))) * ship.thrust)
                 ship.yvel -= ((math.cos((ship.unitcircle))) * ship.thrust)
-                ship.xvel -= ((math.sin((ship.unitcircle-90))) * ship.thrust)
-                print(ship.rot, ship.xvel, ship.yvel)
+                print(ship.rot, ship.unitcircle, ship.xvel, ship.yvel)
                 ship.fuel -= 0.2
 
     # Let the forces of nature do their things
