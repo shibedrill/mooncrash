@@ -36,7 +36,7 @@ class ship:
     ypos = 250
     xvel = 0
     yvel = 0
-    rot = 0
+    rot = 90
     unitcircle = 0
     thrust = 5
     fuel = 100
@@ -61,8 +61,8 @@ def rotate(point):
     ox, oy = ship.xpos, ship.ypos
     px, py = point
 
-    qx = ox + math.cos(math.radians(ship.rot)) * (px - ox) - math.sin(math.radians(ship.rot)) * (py - oy)
-    qy = oy + math.sin(math.radians(ship.rot)) * (px - ox) + math.cos(math.radians(ship.rot)) * (py - oy)
+    qx = ox + math.cos(math.radians(ship.rot-90)) * (px - ox) - math.sin(math.radians(ship.rot-90)) * (py - oy)
+    qy = oy + math.sin(math.radians(ship.rot-90)) * (px - ox) + math.cos(math.radians(ship.rot-90)) * (py - oy)
     return qx, qy
 
 # Draw the ship!
@@ -94,21 +94,11 @@ while True:
             if keys[pygame.K_RIGHT]:
                 ship.rot += 5
             if keys[pygame.K_UP] and ship.fuel > 0:
-                print(ship.rot)
                 # TO DO: Somewhere in here, something is not working.
                 # I don't think value signs are being respected.
 
-                # We adjust our rotational values to compensate for the fact that 0,
-                # in Python, is straight up but 0 in a unit circle is 3 o'clock.
-                # So: If the rotation, plus 90 degrees clockwise, is greater than 360 (wraps around),
-                # we add 90 to compensate and subtract 360 to get back in range.
-                if (ship.rot + 90) > 360:
-                    ship.unitcircle = (ship.rot + 90) - 360
-                else:
-                    ship.unitcircle = (ship.rot + 90)
-                # Now, we have a unit circle setup.
-                # What we wanna do now is get a reference angle.
-                ship.unitcircle = ship.unitcircle%180
+                # What we wanna do first is get a reference angle.
+                ship.unitcircle = ship.rot%180
                 if ship.unitcircle > 90 :
                     ship.unitcircle = 180 - ship.unitcircle
                 # Now we have a reference angle!! Woo!! The most difficult part is done.
@@ -118,17 +108,17 @@ while True:
                 # Which means if we simply multiply these results by the Thrust value,
                 # we get our vector components!!
 
-                # I think the bug is here. Somehow between +1 degrees and +180 degrees,
-                # the Y component of the vector becomes negative.
-                if 181 > ship.rot > 0:
-                    ship.yvel -= ((math.sin(ship.unitcircle))) * ship.thrust
-                else:
-                    ship.yvel += (math.sin(ship.unitcircle)) * ship.thrust
-                #ship.xvel += (math.cos(ship.unitcircle)) * ship.thrust
+                # I think the bug is here.
+                # The ship seemingly chooses a random direction in the X axis
+                # and refuses to go the other way.
+                ship.yvel -= ((math.cos((ship.unitcircle))) * ship.thrust)
+                ship.xvel -= ((math.sin((ship.unitcircle-90))) * ship.thrust)
+                print(ship.rot, ship.xvel, ship.yvel)
                 ship.fuel -= 0.2
 
     # Let the forces of nature do their things
     ship.yvel += (grav/fps)
     ship.ypos -= (ship.yvel/fps)
-    ship.xpos -= (ship.xvel/fps)
+    ship.xpos += (ship.xvel/fps)
+    #print("X: ", ship.xvel)
     clock.tick(fps)
