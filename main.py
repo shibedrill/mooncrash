@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import pygame, time, math, sys
+import pygame, time, math, sys, random
 
 # Define screen dimensions
 screenx = 500
@@ -10,7 +10,7 @@ display = pygame.display.get_surface()
 pygame.key.set_repeat(100, 100)
 pygame.display.set_caption("Mooncrash!")
 pygame.font.init()
-font = pygame.font.Font('freesansbold.ttf', 32)
+font = pygame.font.Font('freesansbold.ttf', 12)
 
 # Define colors and stuff
 red = (255, 0, 0)
@@ -24,12 +24,6 @@ pygame.init()
 clock = pygame.time.Clock()
 fps = 60
 
-# Function to update screen
-def drawscreen():
-    display.fill(black)
-    drawship()
-    drawgui()
-
 # Define an object to use as our Ship
 class ship:
     xpos = 250
@@ -38,8 +32,24 @@ class ship:
     yvel = 0
     rot = 90
     unitcircle = 0
-    thrust = 5
+    thrust = 20
     fuel = 100
+    mass = 5
+    rect = ()
+    # Draw the ship!
+    def draw():
+        # Make 3 points to draw the VISUAL representation of the ship.
+        # This involves rotating these points about the origin (the ship's true position)
+        # by the amount specified in ship.rot .
+        shipbow = rotate((ship.xpos, (ship.ypos - 20)))
+        shipport = rotate(((ship.xpos - 6), ship.ypos))
+        shipstarboard = rotate(((ship.xpos + 6), ship.ypos))
+        ship.rect = pygame.draw.aalines(display, white, True, (shipbow, shipport, shipstarboard), blend=1)
+    def exhaust():
+        A = rotate((ship.xpos, (ship.ypos + 10)))
+        B = rotate((ship.xpos, (ship.ypos - 2)))
+        C = rotate((ship.xpos, (ship.ypos + 2)))
+
 
 # Define an object to define the ground
 class ground:
@@ -49,12 +59,26 @@ class ground:
     # Also having each point in the vector makes it easier to
     # get the rect of every line and calculate landings.
     points = []
+    rects = []
+    def populate_ground_array():
+        pointpos = 500
+        while len(ground.points) < 20:
+            point = ((random.randint(-3, 3) + pointpos), (random.randint(-15, 15) + (screeny - (screeny * 0.1))))
+            ground.points.append(point)
+            pointpos -= 30
+    def draw():
+        pointindex = 0
+        while pointindex < len(ground.points) - 1:
+            ground.rects.append(pygame.draw.aaline(display, blue, ground.points[pointindex], ground.points[pointindex + 1], blend = 1))
+            pointindex += 1
 
 # Begin defining physics variables
 grav = (0 - 9.8) # Acceleration due to gravity, in meters/second/second
 
 class gui:
-    fuel = font.render((f"Fuel: {(math.trunc(ship.fuel))}%"), True, white, white)
+    def draw():
+        fuel = font.render((f"Fuel: {(math.trunc(ship.fuel))}%"), True, white, black)
+        display.blit(fuel, (400, 250))
 
 # Shamelessly stolen function to rotate the ship
 def rotate(point):
@@ -65,20 +89,17 @@ def rotate(point):
     qy = oy + math.sin(math.radians(ship.rot-90)) * (px - ox) + math.cos(math.radians(ship.rot-90)) * (py - oy)
     return qx, qy
 
-# Draw the ship!
-def drawship():
-    # Make 3 points to draw the VISUAL representation of the ship.
-    # This involves rotating these points about the origin (the ship's true position)
-    # by the amount specified in ship.rot .
-    shipbow = rotate((ship.xpos, (ship.ypos - 20)))
-    shipport = rotate(((ship.xpos - 6), ship.ypos))
-    shipstarboard = rotate(((ship.xpos + 6), ship.ypos))
-    pygame.draw.aalines(display, white, True, (shipbow, shipport, shipstarboard), blend=1)
+# Function to update screen
+def drawscreen():
+    display.fill(black)
+    ship.draw()
+    gui.draw()
+    ground.draw()
     pygame.display.flip()
 
-def drawgui():
-    # This doesn't show up for some godforsaken reason
-    display.blit(gui.fuel, (250, 250))
+ground.populate_ground_array()
+for p in ground.points:
+    print(p)
 
 # Main loop
 while True:
@@ -94,32 +115,41 @@ while True:
             if keys[pygame.K_RIGHT]:
                 ship.rot += 5
             if keys[pygame.K_UP] and ship.fuel > 0:
-                # TO DO: Somewhere in here, something is not working.
-                # I don't think value signs are being respected.
-
-                # What we wanna do first is get a reference angle.
-                # Notice: THIS FUNCTION IS BROKEN! It returns a Positive reference
-                # angle regardless of the input.
-                ship.unitcircle = ship.rot%180
-                if ship.unitcircle > 90 :
+                ship.fuel -= 0.3
+                ship.unitcircle = ship.rot%360
+                if 360 > ship.rot > 270 or 0 > ship.rot:
+                    ship.unitcircle = 360 - ship.unitcircle
+                    ship.xvel -= (math.cos(math.radians(ship.unitcircle)) * ship.thrust)
+                    ship.yvel -= (math.sin(math.radians(ship.unitcircle)) * ship.thrust)
+                elif 270 > ship.rot > 180:
+                    ship.unitcircle -= 180
+                    ship.xvel += (math.cos(math.radians(ship.unitcircle)) * ship.thrust)
+                    ship.yvel -= (math.sin(math.radians(ship.unitcircle)) * ship.thrust)
+                elif 180 > ship.rot > 90:
                     ship.unitcircle = 180 - ship.unitcircle
-                # ship.unitcircle is now our reference angle, so:
-                # sin(ship.unitcircle) = (Increase in vel (Y)) / Thrust
-                # cos(ship.unitcircle) = (Increase in vel (X)) / Thrust
-
-                # I think the bug is here.
-                # The ship seemingly chooses a random direction in the X axis
-                # and refuses to go the other way.
-                # Additionally it seems to randomly decide to invert its vertical
-                # thrust and go straight down...?
-                ship.xvel += ((math.sin((ship.unitcircle-90))) * ship.thrust)
-                ship.yvel -= ((math.cos((ship.unitcircle))) * ship.thrust)
-                print(ship.rot, ship.unitcircle, ship.xvel, ship.yvel)
-                ship.fuel -= 0.2
-
+                    ship.xvel += (math.cos(math.radians(ship.unitcircle)) * ship.thrust)
+                    ship.yvel += (math.sin(math.radians(ship.unitcircle)) * ship.thrust) 
+                elif 90 > ship.rot > 0:
+                    ship.unitcircle = ship.unitcircle
+                    ship.xvel -= (math.cos(math.radians(ship.unitcircle)) * ship.thrust)
+                    ship.yvel += (math.sin(math.radians(ship.unitcircle)) * ship.thrust)
+                elif ship.rot == 90:
+                    ship.yvel += (math.sin(math.radians(ship.unitcircle)) * ship.thrust)
+                #print(ship.rot, ship.unitcircle, ship.xvel, ship.yvel)
+                
     # Let the forces of nature do their things
-    ship.yvel += (grav/fps)
-    ship.ypos -= (ship.yvel/fps)
-    ship.xpos += (ship.xvel/fps)
+    collide = False
+    for rect in ground.rects:
+        if pygame.Rect.colliderect(rect, ship.rect):
+            collide = True
+    if collide:
+        if ship.yvel < 10 and ship.xvel < 5:
+            landed = True
+        elif ship.yvel >= 10 or ship.xvel >= 5:
+            destroyed = True
+    elif collide == False:
+        ship.yvel += ((grav * ship.mass)/fps)
+        ship.ypos -= (ship.yvel/fps)
+        ship.xpos += (ship.xvel/fps)
     #print("X: ", ship.xvel)
     clock.tick(fps)
