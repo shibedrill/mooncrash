@@ -36,8 +36,14 @@ class ship:
     fuel = 100
     mass = 5
     rect = ()
+    engine = False
     # Draw the ship!
     def draw():
+        if ship.engine == True:
+            A = rotate((ship.xpos, (ship.ypos + 10)))
+            B = rotate(((ship.xpos - 2), ship.ypos))
+            C = rotate(((ship.xpos + 2), ship.ypos))
+            pygame.draw.aalines(display, red, True, (A, B, C), blend=1)
         # Make 3 points to draw the VISUAL representation of the ship.
         # This involves rotating these points about the origin (the ship's true position)
         # by the amount specified in ship.rot .
@@ -45,10 +51,6 @@ class ship:
         shipport = rotate(((ship.xpos - 6), ship.ypos))
         shipstarboard = rotate(((ship.xpos + 6), ship.ypos))
         ship.rect = pygame.draw.aalines(display, white, True, (shipbow, shipport, shipstarboard), blend=1)
-    def exhaust():
-        A = rotate((ship.xpos, (ship.ypos + 10)))
-        B = rotate((ship.xpos, (ship.ypos - 2)))
-        C = rotate((ship.xpos, (ship.ypos + 2)))
 
 
 # Define an object to define the ground
@@ -108,6 +110,10 @@ while True:
     # Pump events from queue
     pygame.event.pump()
     for event in pygame.event.get():
+        if event.type == pygame.KEYUP:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_UP] == False:
+                ship.engine = False
         if event.type == pygame.KEYDOWN:
             keys = pygame.key.get_pressed()
             if keys[pygame.K_LEFT]:
@@ -115,6 +121,7 @@ while True:
             if keys[pygame.K_RIGHT]:
                 ship.rot += 5
             if keys[pygame.K_UP] and ship.fuel > 0:
+                ship.engine = True
                 ship.fuel -= 0.3
                 ship.unitcircle = ship.rot%360
                 if 360 > ship.rot > 270 or 0 > ship.rot:
@@ -139,15 +146,8 @@ while True:
                 
     # Let the forces of nature do their things
     collide = False
-    for rect in ground.rects:
-        if pygame.Rect.colliderect(rect, ship.rect):
-            collide = True
-    if collide:
-        if ship.yvel < 10 and ship.xvel < 5:
-            landed = True
-        elif ship.yvel >= 10 or ship.xvel >= 5:
-            destroyed = True
-    elif collide == False:
+    # Put collision logic here. The old stuff sucked.
+    if collide == False:
         ship.yvel += ((grav * ship.mass)/fps)
         ship.ypos -= (ship.yvel/fps)
         ship.xpos += (ship.xvel/fps)
